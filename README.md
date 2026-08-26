@@ -6,7 +6,7 @@ Quantum computing is hard to *feel*. You read about superposition, phase, and in
 
 It's aimed at students, educators, and anyone curious about quantum computing who doesn't want to fight through a research-grade toolchain just to see a qubit move.
 
-> **Status — Phase 2 (two-qubit).** Both simulators are live. The single-qubit backend is verified against 104 golden circuits / 359 snapshots; the two-qubit backend against a further 77 circuits / 272 snapshots, plus 30,000 fuzzed random circuits. Every value was produced by Qiskit and independently cross-checked. Three or more qubits, noise modeling, and hardware backends remain out of scope.
+> **Status — Phase 2 (two-qubit).** Both simulators are live. Both backends are verified against a catalogue of golden circuits and their full state snapshots, plus a large body of fuzzed random circuits. Every value was produced by Qiskit and independently cross-checked. Three or more qubits, noise modeling, and hardware backends remain out of scope.
 
 ---
 
@@ -27,7 +27,7 @@ The stuff that trips people up most — how a gate rotates a state on the Bloch 
 - **Probability distributions** — Measurement outcome probabilities plotted with Plotly, all basis states always shown.
 - **Two simulators, one for each qubit count** — *Start exploring* opens a chooser. The single-qubit page is where superposition, phase and interference live; the two-qubit page adds `CX`, `CZ` and `SWAP`, a second Bloch sphere, four probability bars, and an entanglement readout.
 - **Entanglement you can watch happen** — Build a Bell pair and both Bloch vectors shrink to the origin while the pair's own state stays perfectly defined. That collapse *is* the entanglement: the information has moved out of the individual qubits and into the correlation between them.
-- **181 built-in circuits with teaching notes** — 104 single-qubit across six concepts, 77 two-qubit across eight. Each carries a plain-English explanation of what happens, what to watch (including what *doesn't* move), and where it matters in real quantum computing.
+- **Built-in circuits with teaching notes** — a single-qubit catalogue across six concepts and a two-qubit one across eight. Each carries a plain-English explanation of what happens, what to watch (including what *doesn't* move), and where it matters in real quantum computing.
 - **A full reference section** — `/learn` carries 35 sections: all 8 concepts, all 16 gates with their matrices, axes, history and hardware cost, and the real-world picture. Every section links straight into whichever simulator can run it.
 - **Qiskit-powered backend** — Simulation is exact, via `Statevector`. Every number in the catalogue was produced by Qiskit and re-verified independently.
 - **Zero setup for the end user** — Runs in the browser. No quantum hardware, no local Python for whoever's just using it.
@@ -122,8 +122,8 @@ Quick sanity checks — `|0⟩` with no gates sits at Bloch `z = +1` (north pole
 Six checks make up CI, and all six must exit 0:
 
 ```bash
-python conformance_test.py    --engine quantum_engine              # 104 golden circuits, 1 qubit
-python conformance_test_2q.py --engine quantum_engine              #  77 golden circuits, 2 qubits
+python conformance_test.py    --engine quantum_engine              # golden circuits, 1 qubit
+python conformance_test_2q.py --engine quantum_engine              # golden circuits, 2 qubits
 python verify_live.py         --engine quantum_engine --trials 3000
 python verify_live.py         --engine quantum_engine --trials 3000 --qubits 2
 python fuzz2.py 20000                                              # 11 invariants, random circuits
@@ -229,8 +229,8 @@ qubitvista/
 │   ├── explain.py              # teaching text, generated from simulated results
 │   ├── explain2.py             # the same, for two-qubit circuits
 │   ├── schemas.py              # request models
-│   ├── circuits_spec.json      # golden data — 104 circuits, 359 snapshots
-│   ├── circuits_spec_2q.json   # golden data —  77 circuits, 272 snapshots
+│   ├── circuits_spec.json      # golden data — single-qubit circuits + snapshots
+│   ├── circuits_spec_2q.json   # golden data — two-qubit circuits + snapshots
 │   ├── conformance_test.py     # contract verification, 1 qubit
 │   ├── conformance_test_2q.py  # contract verification, 2 qubits
 │   ├── fuzz2.py                # property-based tests on random circuits
@@ -246,8 +246,8 @@ qubitvista/
 │       ├── data/               # Learn page content (generated)
 │       └── utils/              # API client + exact offline engines
 └── docs/
-    ├── QubitVista_Circuit_Plates.html     # visual catalogue, 104 single-qubit circuits
-    ├── QubitVista_TwoQubit_Catalogue.html # visual catalogue,  77 two-qubit circuits
+    ├── QubitVista_Circuit_Plates.html     # visual catalogue, single-qubit circuits
+    ├── QubitVista_TwoQubit_Catalogue.html # visual catalogue, two-qubit circuits
     └── learn_reference.md                 # source text behind the Learn page
 ```
 
@@ -286,13 +286,13 @@ Correctness isn't assumed, and the checks are deliberately not all of a kind —
 
 **The browser engines.** `quantumEngine.js` and `quantumEngine2.js` are what runs when the backend is unreachable, so a drift there shows a user wrong numbers with no warning. `cross_engine_test.mjs` replays both golden specs through them, comparing every prefix rather than just final states.
 
-The two spec files hold 181 circuits and 631 state snapshots between them, every value generated by Qiskit and independently re-derived with raw NumPy including the little-endian bit order. On top of the values themselves, the suites check that each step's stated rotation axis and angle actually carry the previous Bloch vector to the next one, via Rodrigues' rotation formula — a sign error there would animate the sphere backwards without changing a single number in the panels.
+Between them the two spec files hold every golden circuit and its full sequence of state snapshots, every value generated by Qiskit and independently re-derived with raw NumPy including the little-endian bit order. On top of the values themselves, the suites check that each step's stated rotation axis and angle actually carry the previous Bloch vector to the next one, via Rodrigues' rotation formula — a sign error there would animate the sphere backwards without changing a single number in the panels.
 
 At two qubits, two independently computed quantities are cross-checked against each other: `purity = (1 + length²)/2`, and `length = √(1 − concurrence²)` for a pure pair. Neither is derived from the other, so agreeing is evidence rather than tautology.
 
-`fuzz2.py` then does the same on 30,000 random circuits nobody wrote down, which is what actually protects the tool from a circuit a user drags together.
+`fuzz2.py` then does the same on a large batch of random circuits nobody wrote down, which is what actually protects the tool from a circuit a user drags together.
 
-Independent reference implementations are kept deliberately — `engine_ref.py` and `engine2.py` — and are never imported by the shipping engine. Keeping two implementations in agreement across 631 snapshots is the point.
+Independent reference implementations are kept deliberately — `engine_ref.py` and `engine2.py` — and are never imported by the shipping engine. Keeping two implementations in agreement across every snapshot is the point.
 
 ---
 

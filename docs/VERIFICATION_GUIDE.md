@@ -116,7 +116,7 @@ does not.
 | Is my **server** right end to end? | `python verify_live.py --endpoint http://localhost:8000/api/simulate` |
 | Does the **browser** agree with the backend? | `node cross_engine_test.mjs` |
 | Did I break a known-good case? | `python conformance_test.py --engine quantum_engine` |
-| Do the physical invariants hold? | `python fuzz2.py 30000` |
+| Do the physical invariants hold? | `python fuzz2.py 20000` |
 
 ### Why `verify_live.py` is the one that settles it
 
