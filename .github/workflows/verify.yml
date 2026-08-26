@@ -1,0 +1,77 @@
+# Correctness gate for QubitVista.
+#
+# Six checks, and they are deliberately not redundant:
+#
+#   conformance_test*.py  the 181 golden circuits, value for value
+#   verify_live.py        the same physics recomputed in plain NumPy with no
+#                         Qiskit anywhere, so a mistake in how Qiskit is driven
+#                         cannot be agreed with by every other test
+#   fuzz2.py              the invariants, on circuits nobody wrote down
+#   cross_engine_test.mjs the browser fallback engines, which a user working
+#                         offline sees instead of the backend
+#
+# If one fails the code is wrong, not the data. Never edit a spec or loosen a
+# tolerance to make this pass.
+
+name: verify
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: pip install -r requirements.txt
+
+      - name: Unit tests
+        working-directory: backend
+        # Named tests_*.py, so pytest has to be pointed at them explicitly.
+        run: pytest tests_phase1.py tests_phase2.py
+
+      - name: Golden circuits — one qubit
+        working-directory: backend
+        run: python conformance_test.py --engine quantum_engine
+
+      - name: Golden circuits — two qubits
+        working-directory: backend
+        run: python conformance_test_2q.py --engine quantum_engine
+
+      - name: Independent recomputation — one qubit
+        working-directory: backend
+        run: python verify_live.py --engine quantum_engine --trials 3000
+
+      - name: Independent recomputation — two qubits
+        working-directory: backend
+        run: python verify_live.py --engine quantum_engine --trials 3000 --qubits 2
+
+      - name: Property-based invariants
+        working-directory: backend
+        run: python fuzz2.py 20000
+
+      - name: Browser engines vs the backend
+        working-directory: frontend
+        run: node cross_engine_test.mjs
+
+      - name: Frontend build
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build

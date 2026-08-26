@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+# Pinned deliberately. Windows Smart App Control blocks qiskit's unsigned Rust
+# extension (_accelerate.pyd) until that exact build has established download
+# reputation, so a freshly released version fails to import with
+# "An Application Control policy has blocked this file". 2.2.3 is old enough to
+# be trusted and passes the full golden conformance run unchanged.
+qiskit==2.2.3
+numpy
+
+# Only the test suites need this, but the project's documented workflow and CI
+# both run them, so a fresh checkout that installs this file has to be able to.
+pytest

@@ -1,0 +1,9 @@
+# Normalise line endings in the repository to LF.
+#
+# This project is written on Windows and run on macOS, and without this the
+# first checkout on the other machine can show every file as modified purely
+# because of CRLF/LF. Git stores LF and checks out whatever is native.
+* text=auto
+
+# Binary — never touch these.
+*.png binary

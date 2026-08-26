@@ -1,0 +1,37 @@
+# Python
+venv/
+.venv/
+env/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+
+# Node / frontend
+node_modules/
+dist/
+dist-ssr/
+.vite/
+*.tsbuildinfo
+coverage/
+
+# Editors / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+._*
+Thumbs.db
+desktop.ini
+
+# Deploy provider caches
+.vercel
+.netlify
+
+# Local — env files in every form npm/vite reads them, not just the bare name
+*.log
+.env
+.env.*
+!.env.example

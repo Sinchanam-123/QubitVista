@@ -1,0 +1,393 @@
+/* ============================================================
+   QubitVista Design Tokens
+   Signature idea: "phase = color". In quantum statevector plots,
+   physicists conventionally color each amplitude by its phase angle
+   (hue) and its magnitude by brightness/length. We reuse that exact
+   convention as the accent system for the whole UI — gate chips,
+   active states, and the hero gradient all sit on the same hue wheel
+   a real Bloch-sphere phase would use, rather than a generic
+   AI-purple gradient.
+   ============================================================ */
+
+:root {
+  /* Light mode — cool glass-blue base, lifted from the logo's Bloch sphere.
+     Deliberately not white-on-white: a #FFFFFF surface over a #F5F8FB page
+     gave almost no separation between a card and the thing behind it, and the
+     sheer amount of near-white left the accents looking washed out next to it.
+     The surface is now a shade off white and the page a shade deeper, so the
+     cards read as cards and the colour has something to sit against. */
+  --bg: #EDF1F7;
+  --surface: #FAFCFE;
+  --surface-alt: #E2E9F2;
+  --ink: #0E1622;
+  --ink-soft: #526276;
+  --border: #CBD8E6;
+
+  /* Phase-color wheel, re-tuned to the logo's own gradient (teal -> magenta).
+     These are the LIGHT-mode values and are darker than they look like they
+     should be: the same hue that reads clearly on a dark panel drops to about
+     2:1 against white, which is why the light theme used to feel like the
+     background was eating every accent. Dark mode lightens them below. */
+  --phase-0: #2A7CB0;    /* glass blue  — phase 0, the sphere itself */
+  --phase-90: #12857C;   /* teal        — phase 90, arrow base */
+  --phase-180: #9333C4;  /* magenta     — phase 180, arrow tip */
+  --phase-270: #BE3F9C;  /* pink        — phase 270 */
+
+  /* Lightness for accents mixed at runtime from a hue, so inline hsl() colours
+     track the theme the same way the tokens above do. */
+  --accent-l: 40%;
+  --accent-l-soft: 46%;
+
+  --accent-grad: linear-gradient(120deg, var(--phase-90), var(--phase-180));
+
+  --font-display: 'Space Grotesk', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+
+  /* A touch stronger than before — with an off-white surface on a light page
+     the shadow is what actually lifts a card off it. */
+  --shadow-soft: 0 8px 26px rgba(20, 30, 56, 0.10);
+  --shadow-lift: 0 14px 40px rgba(20, 30, 56, 0.16);
+
+  /* ---- Fluid scale ----------------------------------------------------
+     Every page here is a single-screen layout, so vertical rhythm is
+     derived from viewport height rather than fixed pixels. A 13" laptop
+     leaves roughly 600-700px of usable height and a 15" one 820-950px;
+     these clamps let one layout fill both without a second breakpoint
+     set and without either scrolling. */
+  --gap-xs: clamp(5px, 0.8vh, 9px);
+  --gap-sm: clamp(9px, 1.3vh, 15px);
+  --gap-md: clamp(13px, 2vh, 22px);
+  --gap-lg: clamp(18px, 3.4vh, 40px);
+  --pad-card: clamp(13px, 1.9vh, 22px);
+
+  --fs-body: clamp(13.5px, 0.26vw + 12.4px, 16.5px);
+  --fs-sm: clamp(11.5px, 0.16vw + 10.8px, 13.5px);
+
+  color-scheme: light;
+}
+
+[data-theme='dark'] {
+  --bg: #0A1420;
+  --surface: #101D2E;
+  --surface-alt: #172A3F;
+  --ink: #E7EEF5;
+  --ink-soft: #93A3B8;
+  --border: #22374E;
+
+  --phase-0: #6BB3E0;
+  --phase-90: #3FD6CB;
+  --phase-180: #CB77EE;
+  --phase-270: #EE9BDE;
+
+  --accent-l: 58%;
+  --accent-l-soft: 62%;
+
+  --shadow-soft: 0 8px 30px rgba(0, 0, 0, 0.35);
+  --shadow-lift: 0 14px 45px rgba(0, 0, 0, 0.45);
+
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  transition: background 0.3s ease, color 0.3s ease;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+p { margin: 0; color: var(--ink-soft); line-height: 1.6; }
+
+a { color: inherit; }
+
+button {
+  font-family: var(--font-body);
+  cursor: pointer;
+}
+
+.mono { font-family: var(--font-mono); }
+
+/* Focus visibility kept everywhere, per accessibility floor */
+:focus-visible {
+  outline: 2px solid var(--phase-0);
+  outline-offset: 2px;
+}
+
+@keyframes exit-gradient {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes exit-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ---- Home hero animations ------------------------------------------ */
+
+@keyframes home-rise {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.home-rise {
+  opacity: 0;
+  animation: home-rise 0.62s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes logo-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-7px); }
+}
+
+@keyframes logo-halo {
+  0%, 100% { opacity: 0.34; transform: scale(1); }
+  50%      { opacity: 0.62; transform: scale(1.14); }
+}
+
+.feature-card {
+  opacity: 0;
+  animation: home-rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.2s ease;
+}
+
+.feature-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lift);
+}
+
+/* Feature rail cards. The raised one drifts a little so the row never looks
+   frozen between highlight changes; hovering any card lifts it slightly, which
+   is the affordance that says the highlight can be pinned. */
+@keyframes rail-float {
+  0%, 100% { translate: 0 0; }
+  50%      { translate: 0 -3px; }
+}
+
+.rail-card--on {
+  animation: rail-float 4.5s ease-in-out infinite;
+}
+
+.rail-card:hover {
+  border-color: color-mix(in srgb, var(--phase-90) 45%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rail-card--on { animation: none; }
+}
+
+/* The entanglement bond in the hero's two-qubit act. The dashes travel along
+   the link, and the tour speeds them up as concurrence rises, so a Bell pair
+   reads as taut and a separable pair as slack. */
+@keyframes pv-flow {
+  to { stroke-dashoffset: -34; }
+}
+
+
+/* ---- Workflow strip ("how to use") animations ---------------------- */
+
+@keyframes wf-step-in {
+  from { opacity: 0; transform: translateY(14px) scale(0.94); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* The connector draws itself left-to-right, then the next step lands —
+   the strip reads as a sequence rather than four static icons. */
+@keyframes wf-line-draw {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+@keyframes wf-halo {
+  0%, 100% { opacity: 0.28; transform: scale(1); }
+  50%      { opacity: 0.62; transform: scale(1.16); }
+}
+
+@keyframes wf-spark {
+  0%   { left: -34%; opacity: 0; }
+  15%  { opacity: 1; }
+  85%  { opacity: 1; }
+  100% { left: 100%; opacity: 0; }
+}
+
+.wf-step {
+  opacity: 0;
+  animation: wf-step-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.wf-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.wf-step:hover .wf-icon,
+.wf-step:focus-visible .wf-icon {
+  transform: translateY(-5px) scale(1.06);
+  border-color: transparent;
+  box-shadow: 0 10px 26px hsla(280, 60%, 45%, 0.22);
+}
+
+/* Soft phase-colored halo behind each icon, breathing on its own offset
+   so the row shimmers instead of pulsing in lockstep. */
+.wf-halo {
+  position: absolute;
+  inset: -18%;
+  border-radius: 50%;
+  filter: blur(11px);
+  animation: wf-halo 4.6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.wf-num {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #fff;
+  border: 2px solid var(--bg);
+}
+
+.wf-line {
+  position: relative;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--border);
+  overflow: hidden;
+  transform-origin: left center;
+  animation: wf-line-draw 0.5s ease forwards;
+}
+
+.wf-line::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 34%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--phase-90), var(--phase-180), transparent);
+  animation: wf-spark 3.6s linear infinite;
+  animation-delay: inherit;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .wf-step { opacity: 1; }
+  .home-rise { opacity: 1; }
+  .feature-card { opacity: 1; }
+}
+
+/* Full-bleed: the app is a workspace, not an article, so it uses the whole
+   screen at every laptop size rather than sitting in a centred column with
+   dead margins. Pages that genuinely need a reading measure (About) or a
+   form width (Exit) cap themselves instead. */
+.container {
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 clamp(14px, 1.5vw, 26px);
+}
+
+/* Home and Exit are deliberately single-screen: their content is sized
+   from viewport height so nothing overflows and no scrollbar appears.
+   The escape hatch below only kicks in on windows far shorter than any
+   laptop, where clipping would be worse than a scrollbar. */
+.shell-scroll { overflow-y: auto; }
+.shell-scroll--locked { overflow-y: hidden; }
+@media (max-height: 560px) {
+  .shell-scroll--locked { overflow-y: auto; }
+}
+
+.btn-primary {
+  border: none;
+  border-radius: 999px;
+  padding: 14px 28px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent-grad);
+  box-shadow: var(--shadow-soft);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.btn-primary:hover { transform: translateY(-2px); box-shadow: var(--shadow-lift); }
+
+.btn-ghost {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 13px 26px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ink);
+  background: transparent;
+}
+.btn-ghost:hover { background: var(--surface-alt); }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+}
+
+/* The floating simulator chooser. It arrives fast — it is an answer to a click,
+   not an announcement — and the card lift is the only affordance saying the
+   whole card is the link, so it carries some weight. */
+@keyframes chooser-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes chooser-rise {
+  from { opacity: 0; transform: translateY(14px) scale(0.985); }
+  to   { opacity: 1; transform: none; }
+}
+
+.chooser-backdrop { animation: chooser-in 0.18s ease both; }
+.chooser-panel { animation: chooser-rise 0.28s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+.chooser-card:hover,
+.chooser-card:focus-visible {
+  transform: translateY(-3px);
+  border-color: hsla(var(--mode-hue), 65%, 55%, 0.55);
+  box-shadow: var(--shadow-lift);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chooser-backdrop, .chooser-panel { animation: none; }
+}
