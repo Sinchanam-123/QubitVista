@@ -9,8 +9,8 @@ The **Python backend is sound**. Every check passes:
 
 | Check | Result |
 |---|---|
-| `conformance_test.py --engine quantum_engine` | 104 circuits, 359 steps — pass |
-| `conformance_test_2q.py --engine quantum_engine` | 77 circuits, 272 steps — pass |
+| `conformance_test.py --engine quantum_engine` | all circuits and steps — pass |
+| `conformance_test_2q.py --engine quantum_engine` | all circuits and steps — pass |
 | `verify_live.py --engine quantum_engine --trials 2500` (1 qubit) | 0 crashes, 0 disagreements |
 | `verify_live.py --engine quantum_engine --trials 2500 --qubits 2` | 0 crashes, 0 disagreements |
 | `fuzz2.py 12000` | 0 crashes, 0 invariant violations |
@@ -157,7 +157,7 @@ command for the failing case.
 
 Replays every circuit in both golden specs through `quantumEngine.js` and
 `quantumEngine2.js` and compares against the Qiskit values — **every prefix**, so
-per-step evolution is covered, not only final states. 359 + 272 snapshots.
+per-step evolution is covered, not only final states — every snapshot in both specs.
 
 ```bash
 cd frontend
@@ -171,8 +171,8 @@ source files are never modified.
 Current output:
 
 ```
-  single qubit  FAIL   104 circuits, 359 snapshots compared
-  two qubits    PASS    77 circuits, 272 snapshots compared
+  single qubit  FAIL   all circuits and snapshots compared
+  two qubits    PASS   all circuits and snapshots compared
 
    x  I08    step6 amp0    zero magnitude but phase 1.570796
 ```

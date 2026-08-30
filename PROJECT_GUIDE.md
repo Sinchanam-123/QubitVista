@@ -46,7 +46,7 @@ Related properties state evolution also teaches:
 
 ### Phase 2 (current) — two-qubit gates and entanglement
 
-`CX`, `CZ`, `SWAP`, per-qubit reduced states via `partial_trace`, correlated measurement outcomes, and **entanglement**. Golden data is `circuits_spec_2q.json`: **77 circuits, 272 snapshots, 8 concepts**.
+`CX`, `CZ`, `SWAP`, per-qubit reduced states via `partial_trace`, correlated measurement outcomes, and **entanglement**. Golden data is `circuits_spec_2q.json`: **golden circuits, their snapshots, and 8 concepts**.
 
 Entanglement lives here for a hard physical reason, not an arbitrary scoping one: single-qubit gates are tensor-product operations and mathematically **cannot** create entanglement. They preserve separability. A Bell state requires at least one two-qubit gate, so entanglement is impossible to demonstrate until `CX` exists.
 
@@ -93,8 +93,8 @@ qubitvista/
 │   ├── explain2.py            # teaching text, 2 qubits
 │   ├── schemas.py             # Pydantic v2 request models
 │   ├── requirements.txt
-│   ├── circuits_spec.json     # DATA — golden: 104 circuits, 359 verified snapshots
-│   ├── circuits_spec_2q.json  # DATA — golden:  77 circuits, 272 verified snapshots
+│   ├── circuits_spec.json     # DATA — golden: single-qubit circuits + verified snapshots
+│   ├── circuits_spec_2q.json  # DATA — golden: two-qubit circuits + verified snapshots
 │   ├── conformance_test.py    # contract gate, 1 qubit
 │   ├── conformance_test_2q.py # contract gate, 2 qubits
 │   ├── fuzz2.py               # property-based: 11 invariants on random circuits
@@ -131,7 +131,7 @@ and leaves tables and code fences as their own block types.
 
 ### Reference engines, on purpose
 
-`quantum_engine.py` is what the API imports and what ships. `engine_ref.py` and `engine2.py` are deliberately separate implementations that the two conformance suites use as their default target, so the golden specs can be checked without the production code. Keeping independent implementations agreeing on 631 snapshots is the point — **do not merge, delete, or "de-duplicate" them**, and do not import one from another.
+`quantum_engine.py` is what the API imports and what ships. `engine_ref.py` and `engine2.py` are deliberately separate implementations that the two conformance suites use as their default target, so the golden specs can be checked without the production code. Keeping independent implementations agreeing on every snapshot is the point — **do not merge, delete, or "de-duplicate" them**, and do not import one from another.
 
 ### Do not read these into context
 
@@ -186,13 +186,13 @@ python verify_live.py --engine quantum_engine --qubits 2 \
 
 ## The golden specs
 
-`circuits_spec.json` (**104 circuits, 359 snapshots**, 1 qubit) and `circuits_spec_2q.json` (**77 circuits, 272 snapshots**, 2 qubits) are the source of truth. Every gate is exercised, every value was produced by Qiskit and independently re-derived with raw NumPy including the little-endian bit order. Both carry the `rotation` axis/angle per step, checked against Rodrigues' rotation formula so the animation data is provably correct and not merely plausible.
+`circuits_spec.json` (**1 qubit**) and `circuits_spec_2q.json` (**2 qubits**) are the source of truth. Every gate is exercised, every value was produced by Qiskit and independently re-derived with raw NumPy including the little-endian bit order. Both carry the `rotation` axis/angle per step, checked against Rodrigues' rotation formula so the animation data is provably correct and not merely plausible.
 
 Rules:
 
 - **If conformance fails, the backend is wrong.** Do not loosen a tolerance and do not edit a spec to match the code.
 - **Never hand-edit expected values.** If a spec genuinely needs to change, regenerate it from Qiskit.
-- **Counts live in `spec["counts"]`** and are read at runtime. Don't hardcode 104/359 or 77/272 anywhere — they change when circuits are added.
+- **Counts live in `spec["counts"]`** and are read at runtime. Don't hardcode circuit or snapshot counts anywhere — they change when circuits are added.
 - Tolerance is `1e-6`, matching the specs' 6 dp rounding.
 - **The two catalogues reuse case ids** — there is an `S01` in each. Anything that looks a case up must say which catalogue.
 
@@ -381,7 +381,7 @@ Current presets: `state_evolution` → C18 (`H,S,S,H,S`) · `superposition` → 
 
 Presets are chosen to be *pedagogically* good, not minimal — the interference preset uses a partial angle so the result isn't a degenerate 0 or 1, and the state-evolution preset has five gates so there's something to scrub through.
 
-`case_ids` lists every circuit for that concept; the sets are disjoint and cover all 104. Serve these straight from `circuits_spec.json` — don't maintain a second copy in code.
+`case_ids` lists every circuit for that concept; the sets are disjoint and cover the whole catalogue. Serve these straight from `circuits_spec.json` — don't maintain a second copy in code.
 
 **Every preset must run clean through `/api/simulate` unmodified.** A test asserts this.
 
@@ -450,7 +450,7 @@ Unknown gate name → raise `ValueError` in the engine → surface as HTTP 400 w
 
 ## Verification
 
-`python conformance_test.py` is the real gate — it checks all 104 circuits against golden data, plus concept assertions, plus teaching-content completeness. The tables below are the human-readable summary of what it enforces; keep quick unit tests for them too, using `pytest.approx`.
+`python conformance_test.py` is the real gate — it checks every circuit against golden data, plus concept assertions, plus teaching-content completeness. The tables below are the human-readable summary of what it enforces; keep quick unit tests for them too, using `pytest.approx`.
 
 ### Core
 

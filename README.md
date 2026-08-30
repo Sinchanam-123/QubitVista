@@ -89,8 +89,8 @@ The backend does the quantum heavy lifting with Qiskit and exposes it through a 
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/<your-username>/qubitvista.git
-cd qubitvista
+git clone https://github.com/Sinchanam-123/QubitVista.git
+cd QubitVista
 ```
 
 ### 2. Set up the backend
