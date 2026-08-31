@@ -1,12 +1,15 @@
 # Correctness gate for QubitVista.
 #
-# Six checks, and they are deliberately not redundant:
+# Seven checks, and they are deliberately not redundant:
 #
 #   conformance_test*.py  the 181 golden circuits, value for value
 #   verify_live.py        the same physics recomputed in plain NumPy with no
 #                         Qiskit anywhere, so a mistake in how Qiskit is driven
 #                         cannot be agreed with by every other test
-#   fuzz2.py              the invariants, on circuits nobody wrote down
+#   fuzz2.py              the invariants, on circuits nobody wrote down — run
+#                         twice, because it defaults to the engine2 reference
+#                         and the engine that ships is quantum_engine. The
+#                         reference run alone would never touch production code
 #   cross_engine_test.mjs the browser fallback engines, which a user working
 #                         offline sees instead of the backend
 #
@@ -62,9 +65,16 @@ jobs:
         working-directory: backend
         run: python verify_live.py --engine quantum_engine --trials 3000 --qubits 2
 
-      - name: Property-based invariants
+      - name: Property-based invariants — reference engine
         working-directory: backend
+        # No --engine, so this is engine2, the independent reference.
         run: python fuzz2.py 20000
+
+      - name: Property-based invariants — shipping engine
+        working-directory: backend
+        # The engine the API actually serves from. Without this the fuzzing
+        # only ever exercised the reference implementation.
+        run: python fuzz2.py 20000 --engine quantum_engine
 
       - name: Browser engines vs the backend
         working-directory: frontend
