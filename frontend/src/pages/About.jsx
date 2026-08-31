@@ -61,8 +61,10 @@ export default function About() {
       <h2 style={{ fontSize: 20, marginTop: 40, marginBottom: 12 }}>How it works</h2>
       <p style={{ fontSize: 15 }}>
         The simulation itself runs on Qiskit, exposed through a FastAPI backend, so the numbers you see are
-        correct rather than approximated. The frontend handles all the drawing: Three.js renders the 3D Bloch
-        sphere, and Plotly renders the probability and amplitude plots. Right now the interface also ships with
+        correct rather than approximated. The frontend handles all the drawing: the Bloch sphere on the
+        simulator pages is drawn by hand on a 2D canvas, and the probability bars and amplitude dials out of
+        CSS and inline SVG — no charting library, which is why the phase dial can show a needle no bar chart
+        would draw. Right now the interface also ships with
         a small in-browser statevector engine so you can try it immediately, even before that backend is wired
         up.
       </p>

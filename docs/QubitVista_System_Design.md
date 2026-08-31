@@ -54,7 +54,8 @@ independent implementation to be checked against the same data.
 PRESENTATION  +------------------------------------------------------+
               |  Browser - React 18 + Vite                           |
               |  Simulator . Learn . Home . About . Exit             |
-              |  Canvas 2D (Bloch) . Plotly (charts) . SVG (dials)   |
+              |  Canvas 2D (Bloch, simulator) . Three.js (Home hero) |
+              |  CSS/SVG (bars) . SVG (dials, pair visual)           |
               +------------------------------------------------------+
                     |  POST /api/simulate        ^  steps[]
                     |  full gate list            |  one snapshot per gate
@@ -92,8 +93,10 @@ each other.
 | API | FastAPI | Automatic OpenAPI docs at `/docs` make the backend testable before any frontend exists |
 | Validation | Pydantic v2 | Arrives with FastAPI; rejects malformed circuits before they reach the engine |
 | UI | React 18 + Vite 5 | Component model suits per-step re-rendering; Vite gives sub-second HMR |
-| Bloch sphere | Canvas 2D | Full control of depth-sorted wireframe and rotation arcs at a fraction of WebGL's weight |
-| Charts | Plotly | Used on the landing page's live demo |
+| Bloch sphere — simulator pages | Canvas 2D (`BlochSphereClassic`) | Full control of depth-sorted wireframe and rotation arcs at a fraction of WebGL's weight. This is the sphere that teaches: it follows the gate's real axis via Rodrigues and supports drag-to-orbit. `SimulatorTwo` reuses it through `BlochPair` |
+| Hero sphere — landing page | Three.js (`BlochSphere.jsx`) | Purely decorative: an ambient, slowly rotating sphere with orbiting particles. Separate from the simulator path on purpose — the hero optimises for looking good, the simulator for being correct |
+| Two-qubit hero visual | Inline SVG (`PairVisual`) | Deliberately not a pair of spheres — for an entangled pair the interesting object is the correlation, which a sphere has nowhere to put |
+| Charts | Hand-built CSS/SVG | Two or four bars and a phase dial don't justify a charting library; the phase dial isn't a chart type any library ships anyway |
 | Routing | React Router 6 | Five routes, and deep links that carry a circuit into the simulator |
 
 ---

@@ -7,7 +7,7 @@
 //
 // Everything is adapted to the shapes the existing components already expect —
 // BlochSphere takes {x,y,z}, StateVectorEquation takes [{re,im,magnitude,phase}],
-// ProbabilityChart takes [p0, p1] — so no visual component had to change.
+// ProbabilityBars takes [p0, p1] — so no visual component had to change.
 
 import { runCircuit } from './quantumEngine';
 import { runCircuit2, isTwoQubit } from './quantumEngine2';

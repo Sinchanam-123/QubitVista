@@ -22,9 +22,9 @@ The stuff that trips people up most — how a gate rotates a state on the Bloch 
 
 - **Step-by-step state evolution** — The core of the project. Every gate produces a full state snapshot, so you can scrub through a circuit one gate at a time and watch the qubit change. Most simulators only show you the final state; the interesting part is the journey.
 - **Real-time visualization** — Add a gate and the Bloch sphere, statevector, and probability charts update immediately. No re-running, no waiting.
-- **3D Bloch sphere** — Rotatable, zoomable 3D view rendered with Three.js. The animation follows the gate's true rotation axis, so an H gate visibly sweeps around the (1,0,1)/√2 diagonal rather than sliding through the middle of the sphere.
+- **Interactive Bloch sphere** — On the simulator pages this is a drag-to-orbit sphere drawn on a 2D canvas, with a depth-sorted wireframe. The animation follows the gate's true rotation axis, so an H gate visibly sweeps around the (1,0,1)/√2 diagonal rather than sliding through the middle of the sphere. (The slowly rotating sphere on the landing page is a separate, decorative Three.js visual — see the tech-stack table.)
 - **Statevector amplitude analysis** — Amplitudes with magnitude *and* phase, so a phase gate is visible even when it leaves every probability untouched.
-- **Probability distributions** — Measurement outcome probabilities plotted with Plotly, all basis states always shown.
+- **Probability distributions** — Measurement outcome probabilities as a 0→1 bar chart with gridlines, all basis states always shown. Zero-probability states stay drawn as stubs, so the bars never jump position as a circuit changes.
 - **Two simulators, one for each qubit count** — *Start exploring* opens a chooser. The single-qubit page is where superposition, phase and interference live; the two-qubit page adds `CX`, `CZ` and `SWAP`, a second Bloch sphere, four probability bars, and an entanglement readout.
 - **Entanglement you can watch happen** — Build a Bell pair and both Bloch vectors shrink to the origin while the pair's own state stays perfectly defined. That collapse *is* the entanglement: the information has moved out of the individual qubits and into the correlation between them.
 - **Built-in circuits with teaching notes** — a single-qubit catalogue across six concepts and a two-qubit one across eight. Each carries a plain-English explanation of what happens, what to watch (including what *doesn't* move), and where it matters in real quantum computing.
@@ -70,8 +70,9 @@ Entanglement genuinely cannot be demonstrated with one qubit. Single-qubit gates
 |-------|-------|
 | Simulation engine | Qiskit (`qiskit.quantum_info`) |
 | Backend / API | FastAPI + Pydantic v2, served by uvicorn |
-| 3D graphics | Three.js |
-| 2D plots & charts | Plotly |
+| Bloch sphere (simulator pages) | Canvas 2D — hand-drawn wireframe, rotation arcs, drag to orbit |
+| Landing-page hero visual | Three.js |
+| 2D plots & charts | Hand-built — CSS bars and inline SVG, no charting library |
 | Frontend build | Vite |
 
 The backend does the quantum heavy lifting with Qiskit and exposes it through a FastAPI service. It is fully stateless — the frontend owns the circuit and sends the whole gate list on every call, so scrubbing backwards through a circuit is an array index, not another request.
@@ -119,14 +120,15 @@ Quick sanity checks — `|0⟩` with no gates sits at Bloch `z = +1` (north pole
 
 ### 4. Verify the backend
 
-Six checks make up CI, and all six must exit 0:
+Seven checks make up CI, and all seven must exit 0:
 
 ```bash
 python conformance_test.py    --engine quantum_engine              # golden circuits, 1 qubit
 python conformance_test_2q.py --engine quantum_engine              # golden circuits, 2 qubits
 python verify_live.py         --engine quantum_engine --trials 3000
 python verify_live.py         --engine quantum_engine --trials 3000 --qubits 2
-python fuzz2.py 20000                                              # 11 invariants, random circuits
+python fuzz2.py 20000                                              # 11 invariants, engine2 reference
+python fuzz2.py 20000 --engine quantum_engine                      # the same, on the shipping engine
 cd ../frontend && node cross_engine_test.mjs                       # browser engines vs backend
 ```
 
@@ -290,7 +292,7 @@ Between them the two spec files hold every golden circuit and its full sequence 
 
 At two qubits, two independently computed quantities are cross-checked against each other: `purity = (1 + length²)/2`, and `length = √(1 − concurrence²)` for a pure pair. Neither is derived from the other, so agreeing is evidence rather than tautology.
 
-`fuzz2.py` then does the same on a large batch of random circuits nobody wrote down, which is what actually protects the tool from a circuit a user drags together.
+`fuzz2.py` then does the same on a large batch of random circuits nobody wrote down, which is what actually protects the tool from a circuit a user drags together. It takes an `--engine` flag and defaults to `engine2`, the reference, so CI runs it **twice** — once bare and once with `--engine quantum_engine`. Only the second run touches the code the API actually serves from; a fuzz suite pointed solely at the reference implementation proves nothing about what ships.
 
 Independent reference implementations are kept deliberately — `engine_ref.py` and `engine2.py` — and are never imported by the shipping engine. Keeping two implementations in agreement across every snapshot is the point.
 

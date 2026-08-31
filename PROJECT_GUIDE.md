@@ -73,7 +73,7 @@ The eight concepts, and the two that are new:
 | Validation | Pydantic **v2** — see note |
 | Server | uvicorn |
 | 3D (later) | Three.js |
-| 2D plots (later) | Plotly |
+| 2D plots (later) | Hand-built CSS bars and inline SVG — no charting library |
 | Frontend build (later) | Vite |
 
 Python 3.10+. **Do not add dependencies without asking.**

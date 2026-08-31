@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 // Window size, for the few places that need a real pixel number rather than
-// a CSS clamp() — Three.js canvases and Plotly plots both size imperatively.
+// a CSS clamp() — Three.js canvases size imperatively.
 // Values are rounded to a 10px step so a slow drag-resize doesn't re-run
 // expensive scene rebuilds on every intermediate pixel.
 const STEP = 10;

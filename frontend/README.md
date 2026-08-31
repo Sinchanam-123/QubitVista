@@ -5,8 +5,9 @@ React + Vite frontend for QubitVista, built from the project README and objectiv
 ## What's here
 
 - **Home** (`/`) — landing page, explains the project, links to the simulator
-- **Simulator** (`/simulator`) — the workbench: gate palette, circuit canvas, live Bloch sphere (Three.js),
-  phase-colored statevector amplitudes, and a probability distribution chart (Plotly)
+- **Simulator** (`/simulator`) — the workbench: gate palette, circuit canvas, live Bloch sphere (Canvas 2D —
+  the Three.js sphere is the landing-page hero only), phase-colored statevector amplitudes, and a probability
+  distribution chart (hand-built CSS/SVG)
 - **Exit** (`/exit`) — thank-you message + a short feedback form
 
 ## Running it
@@ -61,7 +62,6 @@ src/
 │   ├── Navbar.jsx
 │   ├── BlochSphere.jsx      # Three.js 3D Bloch sphere
 │   ├── AmplitudeBars.jsx    # phase-colored statevector bars
-│   ├── ProbabilityChart.jsx # Plotly bar chart
 │   ├── GatePalette.jsx      # draggable + clickable gate chips
 │   └── CircuitCanvas.jsx    # qubit wires + placed gates
 └── utils/
