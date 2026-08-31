@@ -62,8 +62,7 @@ src/
 │   ├── Navbar.jsx
 │   ├── BlochSphere.jsx      # Three.js 3D Bloch sphere
 │   ├── AmplitudeBars.jsx    # phase-colored statevector bars
-│   ├── GatePalette.jsx      # draggable + clickable gate chips
-│   └── CircuitCanvas.jsx    # qubit wires + placed gates
+│   └── GatePalette.jsx      # draggable + clickable gate chips
 └── utils/
     └── quantumEngine.js     # statevector math (gates, Bloch vector, probabilities)
 ```

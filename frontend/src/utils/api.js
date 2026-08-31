@@ -6,7 +6,8 @@
 // is unreachable, so the UI keeps working with the dev server alone.
 //
 // Everything is adapted to the shapes the existing components already expect —
-// BlochSphere takes {x,y,z}, StateVectorEquation takes [{re,im,magnitude,phase}],
+// BlochSphereClassic takes {x,y,z} (one per wire, via BlochPair, on the
+// two-qubit page), StateVectorPanel takes [{re,im,magnitude,phase}] and
 // ProbabilityBars takes [p0, p1] — so no visual component had to change.
 
 import { runCircuit } from './quantumEngine';
