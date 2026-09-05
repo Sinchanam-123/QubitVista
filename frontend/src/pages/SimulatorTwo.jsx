@@ -8,11 +8,12 @@ import CircuitStrip2 from '../components/classic/CircuitStrip2';
 import ExplainPanel from '../components/classic/ExplainPanel';
 import { TransportBar, AngleBox } from '../components/classic/Controls';
 import TipBox from '../components/classic/TipBox';
+import BackendNotice from '../components/classic/BackendNotice';
 import { ProbabilityBars, StateVectorPanel, EntanglementMeter } from '../components/classic/Readouts';
 import { isParameterized, GATE_GROUPS_2Q, GATE_LIST_2Q } from '../utils/quantumEngine';
 import { isTwoQubit } from '../utils/quantumEngine2';
 import useSimulation2 from '../hooks/useSimulation2';
-import { explain2 as fetchExplain2, getCircuit, getConcepts, localResult2 } from '../utils/api';
+import { explain2 as fetchExplain2, getCircuit, getConcepts, isOffline, localResult2 } from '../utils/api';
 
 /* The two-qubit simulator.
  *
@@ -98,18 +99,52 @@ export default function SimulatorTwo() {
   // Cleared the moment the user edits, at which point inference is the honest
   // answer again.
   const [presetConcept, setPresetConcept] = useState(null);
-  useEffect(() => { getConcepts(NUM_QUBITS).then(setConcepts).catch(() => {}); }, []);
 
-  // Teaching text changes only when the gate list does.
+  /* Whether the backend answered at all, and what it said if it refused — the
+   * same two states as the single-qubit page, and kept apart for the same
+   * reason. This page has more to lose when the backend goes: without it the
+   * preset row above the circuit strip vanishes entirely, since every preset is
+   * read from the catalogue. See the note in BackendNotice. */
+  const [backendOnline, setBackendOnline] = useState(true);
+  const [apiError, setApiError] = useState(null);
+
+  /** Record what a failed call means. Only a call that never reached the
+   *  backend counts as offline. */
+  const noteFailure = useCallback((err) => {
+    if (isOffline(err)) { setBackendOnline(false); setApiError(null); return; }
+    setBackendOnline(true);
+    setApiError(err.message);
+  }, []);
+
+  useEffect(() => {
+    getConcepts(NUM_QUBITS)
+      .then(setConcepts)
+      // A rejected catalogue request says nothing about the circuit on screen,
+      // so it never becomes an error line — only the offline case matters here.
+      .catch((err) => { if (isOffline(err)) setBackendOnline(false); });
+  }, []);
+
+  // Teaching text changes only when the gate list does. It is also the page's
+  // heartbeat: it re-runs on every edit, so it is what notices the backend
+  // coming back and clears the banner again.
   const opsKey = JSON.stringify(ops);
   useEffect(() => {
     let alive = true;
     fetchExplain2(ops, { concept: presetConcept })
-      .then((d) => { if (alive) setExplain(d); })
-      .catch(() => { if (alive) setExplain(null); });
+      .then((d) => {
+        if (!alive) return;
+        setExplain(d);
+        setBackendOnline(true);
+        setApiError(null);
+      })
+      .catch((err) => {
+        if (!alive) return;
+        setExplain(null);
+        noteFailure(err);
+      });
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [opsKey, presetConcept]);
+  }, [opsKey, presetConcept, noteFailure]);
 
   // Clamps to the step that was *asked for*, not to wherever the scrubber
   // happens to sit — a circuit loaded from a preset or ?case= asks for its last
@@ -303,7 +338,9 @@ export default function SimulatorTwo() {
     seeded.current = true;
     getCircuit(c.toUpperCase(), NUM_QUBITS)
       .then((data) => loadGates(data.gates, data.concept))
-      .catch(() => {});
+      // An unknown case id is a 404 on a link, not something the banner should
+      // claim is a problem with the circuit; only an unreachable backend is.
+      .catch((err) => { if (isOffline(err)) setBackendOnline(false); });
   }, [searchParams, loadGates]);
 
   // keyboard scrubbing
@@ -406,6 +443,7 @@ export default function SimulatorTwo() {
                     onPlayToggle={togglePlay}
                   />
                 </div>
+                <BackendNotice offline={!backendOnline} error={apiError} />
                 <div data-tour="angle">
                   <AngleBox
                     angle={angle}

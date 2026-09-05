@@ -17,6 +17,39 @@ export const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000'
 
 const ROTATIONS = new Set(['RX', 'RY', 'RZ', 'P']);
 
+/* Two failures that look identical to a caller, and must not be treated alike.
+ *
+ * A rejected request — 400, the circuit is invalid — is the user's to fix, and
+ * the reason has to reach them. A backend that is not running makes fetch
+ * itself reject, and nothing the user does to the circuit will help. The only
+ * thing that separates them is whether a response came back at all, so every
+ * error raised from a real response carries its status and a fetch rejection
+ * carries none. isOffline() is that test, and the pages branch on it. */
+
+function statusError(status, detail) {
+  const err = new Error(detail || `HTTP ${status}`);
+  err.status = status;
+  return err;
+}
+
+/** Non-OK response -> Error carrying its status and, when the body has one,
+ *  the backend's own explanation. FastAPI's 422 detail is a list rather than a
+ *  sentence, so only a string is used as the message. */
+async function failed(res) {
+  let detail = null;
+  try {
+    const body = await res.json();
+    if (typeof body?.detail === 'string') detail = body.detail;
+  } catch { /* body was not JSON — the status alone will have to do */ }
+  return statusError(res.status, detail);
+}
+
+/** True when the call never reached the backend. An aborted request is neither
+ *  — it is a newer edit cancelling an older one, and means nothing is wrong. */
+export function isOffline(err) {
+  return Boolean(err) && err.name !== 'AbortError' && err.status === undefined;
+}
+
 /** UI op -> API gate. 'Sdg' becomes 'SDG', `param` becomes `params: [angle]`. */
 function toApiGate(op) {
   const gate = String(op.gate).toUpperCase();
@@ -130,7 +163,7 @@ export async function simulate(ops, { signal } = {}) {
   });
 
   const data = await res.json();
-  if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+  if (!res.ok) throw statusError(res.status, data.detail);
 
   const steps = data.steps.map(toStep);
   return { source: 'backend', steps, final: steps[steps.length - 1], error: null };
@@ -144,7 +177,7 @@ export async function explain(ops, { signal } = {}) {
     body: JSON.stringify({ num_qubits: 1, qubit: 0, gates: ops.map(toApiGate) }),
     signal,
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  if (!res.ok) throw await failed(res);
   return res.json();
 }
 
@@ -154,20 +187,20 @@ export async function explain(ops, { signal } = {}) {
 
 export async function getConcepts(qubits = 1) {
   const res = await fetch(`${API_BASE}/api/concepts?qubits=${qubits}`);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  if (!res.ok) throw await failed(res);
   return res.json();
 }
 
 export async function getCircuits(qubits = 1) {
   const res = await fetch(`${API_BASE}/api/circuits?qubits=${qubits}`);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  if (!res.ok) throw await failed(res);
   return res.json();
 }
 
 export async function getCircuit(id, qubits = 1) {
   const res = await fetch(
     `${API_BASE}/api/circuits/${encodeURIComponent(id)}?qubits=${qubits}`);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  if (!res.ok) throw await failed(res);
   return res.json();
 }
 
@@ -236,7 +269,7 @@ export async function simulate2(ops, { signal } = {}) {
   });
 
   const data = await res.json();
-  if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+  if (!res.ok) throw statusError(res.status, data.detail);
 
   const steps = data.steps.map(toStep2);
   return { source: 'backend', steps, final: steps[steps.length - 1], error: null };
@@ -253,6 +286,6 @@ export async function explain2(ops, { signal, concept } = {}) {
     body: JSON.stringify({ num_qubits: 2, qubit: 0, gates: ops.map(toApiGate2) }),
     signal,
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  if (!res.ok) throw await failed(res);
   return res.json();
 }

@@ -8,10 +8,11 @@ import CircuitStrip from '../components/classic/CircuitStrip';
 import ExplainPanel from '../components/classic/ExplainPanel';
 import { TransportBar, AngleBox } from '../components/classic/Controls';
 import TipBox from '../components/classic/TipBox';
+import BackendNotice from '../components/classic/BackendNotice';
 import { ProbabilityBars, StateVectorPanel } from '../components/classic/Readouts';
 import { isParameterized } from '../utils/quantumEngine';
 import useSimulation from '../hooks/useSimulation';
-import { explain as fetchExplain, getCircuit, getConcepts, localResult } from '../utils/api';
+import { explain as fetchExplain, getCircuit, getConcepts, isOffline, localResult } from '../utils/api';
 
 /* The simulator, in the project's original layout.
  *
@@ -85,16 +86,55 @@ export default function Simulator() {
 
   const [explain, setExplain] = useState(null);
   const [concepts, setConcepts] = useState({});
-  useEffect(() => { getConcepts().then(setConcepts).catch(() => {}); }, []);
 
-  // Teaching text changes only when the gate list does.
+  /* Whether the backend answered at all, and what it said if it refused.
+   *
+   * These used to be swallowed: every backend call caught its failure and did
+   * nothing, so with no server running the explain panel and the catalogue just
+   * were not there and the page never said why. The two states are kept apart
+   * on purpose — a 400 means the backend is up and the circuit is wrong, and
+   * telling someone the app is offline when it is not sends them to fix the
+   * wrong thing. */
+  const [backendOnline, setBackendOnline] = useState(true);
+  const [apiError, setApiError] = useState(null);
+
+  /** Record what a failed call means. Only a call that never reached the
+   *  backend counts as offline. */
+  const noteFailure = useCallback((err) => {
+    if (isOffline(err)) { setBackendOnline(false); setApiError(null); return; }
+    setBackendOnline(true);
+    setApiError(err.message);
+  }, []);
+
+  useEffect(() => {
+    getConcepts()
+      .then(setConcepts)
+      // A rejected catalogue request says nothing about the circuit on screen,
+      // so it never becomes an error line — only the offline case matters here.
+      .catch((err) => { if (isOffline(err)) setBackendOnline(false); });
+  }, []);
+
+  // Teaching text changes only when the gate list does. It is also the page's
+  // heartbeat: it re-runs on every edit, so it is what notices the backend
+  // coming back and clears the banner again.
   const opsKey = JSON.stringify(ops);
   useEffect(() => {
     let alive = true;
-    fetchExplain(ops).then((d) => { if (alive) setExplain(d); }).catch(() => { if (alive) setExplain(null); });
+    fetchExplain(ops)
+      .then((d) => {
+        if (!alive) return;
+        setExplain(d);
+        setBackendOnline(true);
+        setApiError(null);
+      })
+      .catch((err) => {
+        if (!alive) return;
+        setExplain(null);
+        noteFailure(err);
+      });
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [opsKey]);
+  }, [opsKey, noteFailure]);
 
   // Keep the scrubber inside the circuit.
   //
@@ -266,7 +306,9 @@ export default function Simulator() {
         const gate = normalizeGate(op.gate);
         return isParameterized(gate) ? { gate, param: op.params?.[0] ?? Math.PI / 2 } : { gate };
       })))
-      .catch(() => {});
+      // An unknown case id is a 404 on a link, not something the banner should
+      // claim is a problem with the circuit; only an unreachable backend is.
+      .catch((err) => { if (isOffline(err)) setBackendOnline(false); });
   }, [searchParams]);
 
   // keyboard scrubbing
@@ -372,6 +414,7 @@ export default function Simulator() {
                     onPlayToggle={togglePlay}
                   />
                 </div>
+                <BackendNotice offline={!backendOnline} error={apiError} />
                 <div data-tour="angle">
                   <AngleBox
                     angle={angle}
