@@ -2,12 +2,15 @@
  *
  * Two failures reach this component and they are not the same failure.
  *
- * OFFLINE — nothing answered on the API. The simulation itself is unaffected:
- * quantumEngine.js runs the identical maths in the browser, so gates still
- * place, the sphere still animates and both readouts still update. What does
- * disappear is everything the backend generates — the teaching notes and the
- * circuit catalogue. Panels that silently empty themselves read as a broken
- * page, so this says which half is missing and that the numbers are still good.
+ * OFFLINE — nothing answered on the API. Most of the page is unaffected:
+ * quantumEngine.js runs the identical maths in the browser, and the catalogue,
+ * the concepts, the per-gate reference cards and every built-in circuit's notes
+ * are served from the generated copy in data/catalogue*.json. The one thing
+ * with no static answer is
+ * /api/explain for a circuit the user built themselves — that text is written
+ * from the simulated result, gate by gate, and only the backend can write it.
+ * An empty panel reads as a broken page, so this says which single piece is
+ * missing and that everything else on screen is still exact.
  *
  * ERROR — the backend answered and rejected the circuit (a 400: a control on
  * the same wire as its target, an unknown gate). That is the user's to fix and
@@ -36,8 +39,9 @@ export default function BackendNotice({ offline = false, error = null }) {
         </span>
         {error || (
           <>
-            Backend offline — simulation is running on the exact in-browser engine.
-            Teaching notes and the circuit catalogue need the backend.
+            Backend offline — simulation is running on the exact in-browser engine,
+            and the circuit catalogue is served from a static copy. Only the written
+            notes for circuits you build yourself need the backend.
           </>
         )}
       </p>

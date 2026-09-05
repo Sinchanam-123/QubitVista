@@ -5,6 +5,11 @@
 // an offline fallback: identical single-qubit maths, used only when the backend
 // is unreachable, so the UI keeps working with the dev server alone.
 //
+// The teaching content has the same arrangement: catalogue*.json under data/ is
+// a generated copy of the catalogue routes, and the three catalogue calls below
+// answer from it when nothing is listening on the API. Only /api/explain for a
+// circuit the user built themselves has no static answer.
+//
 // Everything is adapted to the shapes the existing components already expect —
 // BlochSphereClassic takes {x,y,z} (one per wire, via BlochPair, on the
 // two-qubit page), StateVectorPanel takes [{re,im,magnitude,phase}] and
@@ -48,6 +53,157 @@ async function failed(res) {
  *  — it is a newer edit cancelling an older one, and means nothing is wrong. */
 export function isOffline(err) {
   return Boolean(err) && err.name !== 'AbortError' && err.status === undefined;
+}
+
+/* ---------------------------------------------------------- static catalogue
+ *
+ * The teaching content is the point of the project, and all of it used to
+ * require a running backend: a statically built frontend lost the gate
+ * reference cards, the concepts, the circuit index and every circuit's notes.
+ * catalogue*.json is a generated copy of exactly those routes —
+ * backend/export_catalogue.py writes it by calling the route functions
+ * themselves, and backend/catalogue_drift_test.py fails the build if the two
+ * ever disagree — so answering from it offline is the same bargain
+ * quantumEngine.js already strikes for /api/simulate: identical data, no server.
+ *
+ * Imported dynamically, not at the top of the module. It is ~380 kB of prose,
+ * and a user whose backend is up must never pay to download a copy of what the
+ * backend just told them.
+ */
+const CATALOGUE = {};
+
+/** Cache one promise per catalogue — but never a rejected one. A chunk that
+ *  failed to load once must not disable the fallback for the whole session. */
+function memo(store, q, make) {
+  if (!store[q]) {
+    store[q] = make().catch((err) => { delete store[q]; throw err; });
+  }
+  return store[q];
+}
+
+function catalogue(qubits) {
+  const q = qubits === 2 ? 2 : 1;
+  // Two literal specifiers rather than one computed path: a bundler can only
+  // split what it can see, and a template string here would inline both.
+  return memo(CATALOGUE, q, () => (q === 2
+    ? import('../data/catalogue2q.json')
+    : import('../data/catalogue1q.json')).then((m) => m.default));
+}
+
+/** Run a catalogue request, answering from the static copy when — and only
+ *  when — the backend could not be reached. A 404 for an unknown case id is a
+ *  real answer to a bad link and still throws. */
+async function withStatic(qubits, request, fromStatic) {
+  try {
+    return await request();
+  } catch (err) {
+    if (!isOffline(err)) throw err;
+    return fromStatic(await catalogue(qubits));
+  }
+}
+
+/* Teaching notes for a circuit that is already one of the catalogue's.
+ *
+ * /api/explain writes its text from the simulated result, so a circuit somebody
+ * assembled themselves genuinely needs the backend — there is nothing static to
+ * fall back to. A catalogue circuit is different: its explain block is golden
+ * data, sitting in the file above. Matching the gate list against the catalogue
+ * means opening E01 from the Learn page, or clicking a preset chip, still
+ * teaches something with no server running.
+ *
+ * The key is built from the fields the API compares on, at the precision the
+ * spec stores, so a preset loaded through the UI and its catalogue entry
+ * produce the same string. */
+const BY_GATES = {};
+
+const gateKey = (g) => [
+  String(g.gate).toUpperCase(),
+  g.target ?? 0,
+  g.control ?? '',
+  (g.params || []).map((p) => Number(p).toFixed(6)).join(','),
+].join(':');
+
+const circuitKey = (gates) => gates.map(gateKey).join(' ');
+
+/* The Gates tab's reference cards.
+ *
+ * They reach the UI inside the /api/explain payload, which made them the one
+ * piece of teaching content still missing offline even once the catalogue was
+ * static — the tab sat empty next to a circuit full of gates. The cards are not
+ * per-circuit data though: they are one fixed table per gate, served by
+ * /api/gates as `detail[].info`, so they dump and fall back like everything
+ * else here.
+ */
+const GATE_INFO = {};
+
+/** The gate palette, with a reference card per gate. */
+export async function getGates(qubits = 1) {
+  return withStatic(qubits, async () => {
+    const res = await fetch(`${API_BASE}/api/gates?qubits=${qubits}`);
+    if (!res.ok) throw await failed(res);
+    return res.json();
+  }, (doc) => doc.gates);
+}
+
+/** name -> reference card, built once per catalogue. */
+function gateInfo(qubits) {
+  const q = qubits === 2 ? 2 : 1;
+  return memo(GATE_INFO, q, () => getGates(q)
+    .then((palette) => new Map(palette.detail.map((d) => [d.name, d.info]))));
+}
+
+/** Gate cards for one circuit, assembled exactly as the explain route does:
+ *  the gate's own table, plus where this particular placement sits. A gate with
+ *  no card is skipped rather than drawn blank, which is the route's rule too. */
+async function staticGateCards(qubits, apiGates) {
+  const info = await gateInfo(qubits);
+  const cards = [];
+  apiGates.forEach((g, i) => {
+    const card = info.get(String(g.gate).toUpperCase());
+    if (!card) return;
+    cards.push({
+      ...card,
+      index: i,
+      step: i + 1,
+      angle: (g.params || [])[0] ?? null,
+      target: g.target ?? null,
+      control: g.control ?? null,
+    });
+  });
+  return cards;
+}
+
+/** As much of the /api/explain response as static data can honestly supply.
+ *
+ *  The gate cards are always there — they belong to the gates, not to the
+ *  circuit. `explain` is there when the circuit is one of the catalogue's, and
+ *  null otherwise: those notes are written from the simulated result, and only
+ *  the backend can write them. */
+async function staticExplain(qubits, apiGates) {
+  const q = qubits === 2 ? 2 : 1;
+  const index = await memo(BY_GATES, q, () => catalogue(q).then((doc) => {
+    const byGates = new Map();
+    // First id wins. A few gate sequences appear twice under different
+    // concepts, and the earlier id is the one the index route lists first.
+    for (const c of Object.values(doc.cases)) {
+      const key = circuitKey(c.gates);
+      if (!byGates.has(key)) byGates.set(key, c);
+    }
+    return byGates;
+  }));
+
+  const found = index.get(circuitKey(apiGates));
+  return {
+    // Marked, the same way localResult marks its answer 'local'. The pages
+    // watch for it: a static answer means the backend did not reply, and the
+    // offline banner has to appear even though the panel filled in.
+    source: 'static',
+    num_qubits: q,
+    gates: apiGates,
+    concept: found ? found.explain.concept : null,
+    explain: found ? found.explain : null,
+    gate_cards: await staticGateCards(q, apiGates),
+  };
 }
 
 /** UI op -> API gate. 'Sdg' becomes 'SDG', `param` becomes `params: [angle]`. */
@@ -169,16 +325,24 @@ export async function simulate(ops, { signal } = {}) {
   return { source: 'backend', steps, final: steps[steps.length - 1], error: null };
 }
 
-/** Teaching text for any circuit, generated by the backend from the real result. */
+/** Teaching text for any circuit, generated by the backend from the real result.
+ *  Offline it falls back to static data — the gate cards always, the circuit's
+ *  notes when it is one of the catalogue's. See staticExplain. */
 export async function explain(ops, { signal } = {}) {
-  const res = await fetch(`${API_BASE}/api/explain`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ num_qubits: 1, qubit: 0, gates: ops.map(toApiGate) }),
-    signal,
-  });
-  if (!res.ok) throw await failed(res);
-  return res.json();
+  const gates = ops.map(toApiGate);
+  try {
+    const res = await fetch(`${API_BASE}/api/explain`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ num_qubits: 1, qubit: 0, gates }),
+      signal,
+    });
+    if (!res.ok) throw await failed(res);
+    return res.json();
+  } catch (err) {
+    if (!isOffline(err)) throw err;
+    return staticExplain(1, gates);
+  }
 }
 
 // The two catalogues reuse case ids — there is an S01 in each — so every
@@ -186,22 +350,36 @@ export async function explain(ops, { signal } = {}) {
 // of the Phase 1 callers had to change.
 
 export async function getConcepts(qubits = 1) {
-  const res = await fetch(`${API_BASE}/api/concepts?qubits=${qubits}`);
-  if (!res.ok) throw await failed(res);
-  return res.json();
+  return withStatic(qubits, async () => {
+    const res = await fetch(`${API_BASE}/api/concepts?qubits=${qubits}`);
+    if (!res.ok) throw await failed(res);
+    return res.json();
+  }, (doc) => doc.concepts);
 }
 
 export async function getCircuits(qubits = 1) {
-  const res = await fetch(`${API_BASE}/api/circuits?qubits=${qubits}`);
-  if (!res.ok) throw await failed(res);
-  return res.json();
+  return withStatic(qubits, async () => {
+    const res = await fetch(`${API_BASE}/api/circuits?qubits=${qubits}`);
+    if (!res.ok) throw await failed(res);
+    return res.json();
+  }, (doc) => doc.circuits);
 }
 
 export async function getCircuit(id, qubits = 1) {
-  const res = await fetch(
-    `${API_BASE}/api/circuits/${encodeURIComponent(id)}?qubits=${qubits}`);
-  if (!res.ok) throw await failed(res);
-  return res.json();
+  return withStatic(qubits, async () => {
+    const res = await fetch(
+      `${API_BASE}/api/circuits/${encodeURIComponent(id)}?qubits=${qubits}`);
+    if (!res.ok) throw await failed(res);
+    return res.json();
+  }, (doc) => {
+    // The route upper-cases the id it is given, so the offline lookup does too
+    // — and answers a bad id the same way, with the backend's own 404 wording.
+    const hit = doc.cases[String(id).toUpperCase()];
+    if (!hit) {
+      throw statusError(404, `Unknown circuit '${id}' in the ${qubits}-qubit catalogue.`);
+    }
+    return hit;
+  });
 }
 
 // ----------------------------------------------------------------- two qubits
@@ -280,12 +458,20 @@ export async function simulate2(ops, { signal } = {}) {
  *  omitting it lets the backend infer. */
 export async function explain2(ops, { signal, concept } = {}) {
   const query = concept ? `?concept=${encodeURIComponent(concept)}` : '';
-  const res = await fetch(`${API_BASE}/api/explain${query}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ num_qubits: 2, qubit: 0, gates: ops.map(toApiGate2) }),
-    signal,
-  });
-  if (!res.ok) throw await failed(res);
-  return res.json();
+  const gates = ops.map(toApiGate2);
+  try {
+    const res = await fetch(`${API_BASE}/api/explain${query}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ num_qubits: 2, qubit: 0, gates }),
+      signal,
+    });
+    if (!res.ok) throw await failed(res);
+    return res.json();
+  } catch (err) {
+    if (!isOffline(err)) throw err;
+    // No `concept` hint offline: the block found IS that circuit's own, which
+    // is what the hint exists to select.
+    return staticExplain(2, gates);
+  }
 }

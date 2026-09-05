@@ -109,8 +109,10 @@ export default function Simulator() {
   useEffect(() => {
     getConcepts()
       .then(setConcepts)
-      // A rejected catalogue request says nothing about the circuit on screen,
-      // so it never becomes an error line — only the offline case matters here.
+      // The catalogue calls answer from the generated static copy when the
+      // backend is unreachable, so this now fires only if that copy failed to
+      // load as well. A rejected request says nothing about the circuit on
+      // screen either way, so it never becomes an error line.
       .catch((err) => { if (isOffline(err)) setBackendOnline(false); });
   }, []);
 
@@ -124,7 +126,10 @@ export default function Simulator() {
       .then((d) => {
         if (!alive) return;
         setExplain(d);
-        setBackendOnline(true);
+        // A catalogue circuit still gets its notes with the backend down, out
+        // of the static copy — filling the panel is not evidence the API
+        // answered, so the mark on the payload is what decides the banner.
+        setBackendOnline(d.source !== 'static');
         setApiError(null);
       })
       .catch((err) => {
