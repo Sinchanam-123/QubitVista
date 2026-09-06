@@ -154,6 +154,53 @@ Runs on `http://localhost:5173` and expects the backend on port 8000. If the bac
 
 ---
 
+## Deployment
+
+The two halves deploy separately: the frontend is a folder of static files, the backend is a Python process. Neither knows the other's address until you tell it, and that is the whole of the configuration — two environment variables, documented in [`.env.example`](.env.example).
+
+| Variable | Read by | When | Unset means |
+|---|---|---|---|
+| `VITE_API_BASE` | frontend | **build** time, inlined into the bundle | `http://localhost:8000` |
+| `ALLOWED_ORIGINS` | backend | **start** time, comma-separated | `http://localhost:5173,http://localhost:3000` |
+
+### Frontend — static files
+
+```bash
+cd frontend
+VITE_API_BASE=https://api.qubitvista.example npm run build
+```
+
+`dist/` is then plain HTML, CSS and JS: any static host serves it, and there is no Node process in production. Because Vite inlines the variable, pointing the app at a different API is a rebuild, not a restart.
+
+**It runs with no backend at all.** The simulator uses the in-browser engine, and the catalogue, concepts, gate reference cards and every built-in circuit's teaching notes come from the generated copy in `frontend/src/data/catalogue*.json`. What needs the API is the written notes for a circuit the user builds themselves — those are generated from the simulated result — and the app says so in a banner rather than quietly showing empty panels. A frontend-only deploy is a legitimate way to ship this.
+
+### Backend — a uvicorn process
+
+Any platform that can install `requirements.txt` and run a command will do. Two settings are all it needs — install and start, both run from inside `backend/`:
+
+```bash
+pip install -r requirements.txt
+uvicorn main:app --host 0.0.0.0 --port $PORT
+```
+
+`0.0.0.0` rather than localhost, because a process bound to the loopback interface answers only itself and the platform's router would reach nothing. `$PORT` because most hosts assign the port and expect the app to take it from the environment; locally that is just `--port 8000` spelled out. `ALLOWED_ORIGINS` goes in the same environment, set to the domain the frontend is served from.
+
+Both spec files sit next to the code, so the catalogue and simulate routes need nothing mounted or provisioned. The service is stateless — no database, no sessions, nothing written at runtime — so it scales by running more copies, and a restart costs only the Qiskit import.
+
+Every origin the frontend is served from must appear in `ALLOWED_ORIGINS`, including both the www and non-www forms if both resolve. A missing origin does not fail loudly on the server — the browser blocks the response, and the app falls back to its offline behaviour as though the backend were down.
+
+### Keeping the offline copy honest
+
+`frontend/src/data/catalogue*.json` is generated, never hand-edited. After any change to a spec file or to `explain*.py`, regenerate and commit it:
+
+```bash
+cd backend && python export_catalogue.py
+```
+
+CI runs `catalogue_drift_test.py`, which starts a server and compares all 187 catalogue routes against those files, so a stale copy fails the build rather than teaching offline readers something the project no longer says.
+
+---
+
 ## API
 
 | Endpoint | Returns |
@@ -225,6 +272,7 @@ Unsupported gates, missing rotation angles, out-of-range wires, a two-qubit gate
 qubitvista/
 ├── PROJECT_GUIDE.md                   # project instructions and API contract
 ├── README.md
+├── .env.example                       # VITE_API_BASE and ALLOWED_ORIGINS
 ├── backend/
 │   ├── main.py                 # FastAPI app and routes
 │   ├── quantum_engine.py       # Qiskit simulation logic, one and two qubits
@@ -240,12 +288,14 @@ qubitvista/
 │   ├── engine2.py              # independent reference implementation, 2 qubits
 │   ├── tests_phase1.py         # fast unit tests, 1 qubit
 │   ├── tests_phase2.py         # fast unit tests, 2 qubits
+│   ├── export_catalogue.py     # writes the frontend's offline catalogue copy
+│   ├── catalogue_drift_test.py # that copy vs the live routes, in CI
 │   └── requirements.txt
 ├── frontend/
 │   └── src/
 │       ├── pages/              # Home · Explore · Simulator · SimulatorTwo · Learn
 │       ├── components/         # gate palette, Bloch spheres, readouts
-│       ├── data/               # Learn page content (generated)
+│       ├── data/               # Learn content + offline catalogue (both generated)
 │       └── utils/              # API client + exact offline engines
 └── docs/
     ├── QubitVista_Circuit_Plates.html     # visual catalogue, single-qubit circuits

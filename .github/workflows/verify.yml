@@ -1,6 +1,6 @@
 # Correctness gate for QubitVista.
 #
-# Seven checks, and they are deliberately not redundant:
+# Eight checks, and they are deliberately not redundant:
 #
 #   conformance_test*.py  the 181 golden circuits, value for value
 #   verify_live.py        the same physics recomputed in plain NumPy with no
@@ -12,6 +12,11 @@
 #                         reference run alone would never touch production code
 #   cross_engine_test.mjs the browser fallback engines, which a user working
 #                         offline sees instead of the backend
+#   catalogue_drift_test  the static catalogue the frontend serves offline,
+#                         fetched back off a live uvicorn route by route. The
+#                         numbers have their own checks; this is the one that
+#                         stops the TEACHING content from differing between a
+#                         reader who has the backend and one who does not
 #
 # If one fails the code is wrong, not the data. Never edit a spec or loosen a
 # tolerance to make this pass.
@@ -75,6 +80,14 @@ jobs:
         # The engine the API actually serves from. Without this the fuzzing
         # only ever exercised the reference implementation.
         run: python fuzz2.py 20000 --engine quantum_engine
+
+      - name: Static catalogue vs the live API
+        working-directory: backend
+        # Starts its own uvicorn and fetches all 185 catalogue routes. Fails if
+        # the committed frontend/src/data/catalogue*.json differ by one
+        # character of teaching text — re-run export_catalogue.py, never edit
+        # the JSON.
+        run: python catalogue_drift_test.py
 
       - name: Browser engines vs the backend
         working-directory: frontend

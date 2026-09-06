@@ -96,7 +96,10 @@ export default function Learn() {
       setConcepts(c1); setConcepts2(c2);
       setCircuits(l1.circuits || []); setCircuits2(l2.circuits || []);
     } catch {
-      setCatalogueError('Backend offline — the circuit list needs it running on :8000. Everything written here works without it.');
+      // Reachable only if the generated copy in src/data fails to load too —
+      // with the backend down these calls now answer from it. The page used to
+      // lose its whole catalogue the moment :8000 was not there.
+      setCatalogueError('The circuit list could not be loaded. It normally works even with the backend down — everything written here works regardless.');
     }
   }
 

@@ -41,7 +41,12 @@ export default function ExplainPanel({
       {tab === 'concept' ? (
         explain
           ? <CircuitExplain e={explain} extra={conceptExtra} />
-          : <p style={S.placeholder}>Build a circuit to see what it demonstrates.</p>
+          // An empty panel has two causes and they need different sentences.
+          // With gates on the wire, telling someone to build a circuit reads as
+          // the panel not having noticed the one they just built.
+          : <p style={S.placeholder}>{totalSteps
+            ? 'No notes for this circuit — they are written from the simulated result, which needs the backend.'
+            : 'Build a circuit to see what it demonstrates.'}</p>
       ) : (
         <GatesTab
           gateCard={gateCard}

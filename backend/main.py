@@ -14,6 +14,7 @@ working unchanged.
 from __future__ import annotations
 
 import json
+import os
 from functools import lru_cache
 from pathlib import Path
 
@@ -35,10 +36,35 @@ app = FastAPI(
     description="One- and two-qubit gates with step-by-step state evolution.",
 )
 
-# Development origins for the Vite / CRA dev servers.
+# Browser origins allowed to call this API: the Vite / CRA dev servers.
+DEV_ORIGINS = ["http://localhost:5173", "http://localhost:3000"]
+
+
+def allowed_origins() -> list[str]:
+    """The CORS allow-list, from ALLOWED_ORIGINS or the dev servers.
+
+    A deployed frontend is served from its own domain, so the pair of localhost
+    origins that a checkout needs cannot also be what production uses. The
+    variable takes a comma-separated list — `https://qubitvista.example,
+    https://www.qubitvista.example` — and is read once at startup, so changing
+    it means restarting the process.
+
+    Unset or blank falls back to the dev servers, which is what keeps every
+    existing local workflow working with no configuration at all. Blank entries
+    are dropped rather than passed through: a trailing comma, or the variable
+    set to an empty string by a host that always defines it, would otherwise
+    produce an allow-list that silently rejects every browser. A trailing slash
+    is trimmed for the same reason — an origin is scheme, host and port, and
+    `https://x.example/` never matches the `Origin` header a browser sends.
+    """
+    raw = os.getenv("ALLOWED_ORIGINS", "")
+    origins = [o.strip().rstrip("/") for o in raw.split(",") if o.strip()]
+    return origins or DEV_ORIGINS
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=allowed_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
